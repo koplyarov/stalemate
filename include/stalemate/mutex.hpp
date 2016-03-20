@@ -60,8 +60,13 @@ namespace stalemate
 
 #else
 
-	template < typename LoggerPolicy_, int TimeoutMs_ >
-	using basic_mutex = std::mutex;
+	template < typename LoggerPolicy_, int TimeoutMs_, typename MutexId_ = primitive_id::empty >
+	class basic_mutex : public std::mutex
+	{
+	public:
+		template < typename... Args_ >
+		constexpr basic_mutex(Args_&&... args) { }
+	};
 
 #endif
 
