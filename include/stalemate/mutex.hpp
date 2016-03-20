@@ -3,6 +3,7 @@
 
 
 #include <stalemate/detail/config.hpp>
+#include <stalemate/detail/threading_primitive_guard.hpp>
 #include <stalemate/policies.hpp>
 
 #include <iostream>
@@ -39,12 +40,18 @@ namespace stalemate
 
 			if (_m.try_lock())
 				return;
-				LoggerPolicy_::mutex_lock_fail(get_id(), milliseconds(0));
 
-			auto d = milliseconds(TimeoutMs_);
-			time_point<steady_clock> tp;
-			while (!_m.try_lock_for(d))
-				LoggerPolicy_::mutex_lock_fail(get_id(), time_point<steady_clock>() - tp);
+			detail::threading_primitive_guard g;
+
+			if (g.should_detect_deadlocks())
+			{
+				auto d = milliseconds(TimeoutMs_);
+				time_point<steady_clock> tp;
+				while (!_m.try_lock_for(d))
+					LoggerPolicy_::mutex_lock_fail(get_id(), time_point<steady_clock>() - tp);
+			}
+			else
+				_m.lock();
 		}
 
 		bool try_lock()
