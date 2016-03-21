@@ -1,6 +1,8 @@
-#include <stalemate/backtrace.hpp>
-#include <stalemate/mutex.hpp>
 #include <stalemate/amalgamation.hpp>
+#include <stalemate/backtrace.hpp>
+#include <stalemate/condition_variable.hpp>
+#include <stalemate/mutex.hpp>
+#include <stalemate/recursive_mutex.hpp>
 
 #include <sstream>
 #include <thread>
@@ -12,7 +14,8 @@ using namespace stalemate;
 
 namespace test
 {
-	using mutex = stalemate::basic_mutex<logging::log_to_stderr, 1000, primitive_id::owner_type>;
+	using mutex = stalemate::basic_recursive_mutex<logging::log_to_stderr, 1000, primitive_id::owner_type>;
+	using condition_variable = stalemate::basic_condition_variable<logging::log_to_stderr, 1000, primitive_id::owner_type>;
 
 	class A
 	{

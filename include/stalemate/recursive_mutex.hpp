@@ -1,5 +1,5 @@
-#ifndef STALEMATE_MUTEX_HPP
-#define STALEMATE_MUTEX_HPP
+#ifndef STALEMATE_RECURSIVE_MUTEX_HPP
+#define STALEMATE_RECURSIVE_MUTEX_HPP
 
 
 #include <stalemate/detail/config.hpp>
@@ -8,6 +8,7 @@
 #include <stalemate/policies.hpp>
 
 #include <mutex>
+#include <thread>
 
 
 namespace stalemate
@@ -16,19 +17,19 @@ namespace stalemate
 #if !STALEMATE_PASSTHROUGH
 
 	template < typename LoggerPolicy_, int TimeoutMs_, typename MutexId_ = primitive_id::empty >
-	class basic_mutex : private MutexId_
+	class basic_recursive_mutex : private MutexId_
 	{
 	private:
-		std::timed_mutex	_m;
+		std::recursive_timed_mutex	_m;
 
 	public:
 		template < typename... Args_ >
-		constexpr basic_mutex(Args_&&... args) : MutexId_(std::forward<Args_>(args)...) { }
+		constexpr basic_recursive_mutex(Args_&&... args) : MutexId_(std::forward<Args_>(args)...) { }
 
-		~basic_mutex() { }
+		~basic_recursive_mutex() { }
 
-		basic_mutex(const basic_mutex&) = delete;
-		basic_mutex& operator = (const basic_mutex&) = delete;
+		basic_recursive_mutex(const basic_recursive_mutex&) = delete;
+		basic_recursive_mutex& operator = (const basic_recursive_mutex&) = delete;
 
 		void lock()
 		{
@@ -44,7 +45,7 @@ namespace stalemate
 				auto d = milliseconds(TimeoutMs_);
 				detail::timer t;
 				while (!_m.try_lock_for(d))
-					LoggerPolicy_::show_message(detail::make_log_message("Could not lock mutex", get_id(), t.elapsed()));
+					LoggerPolicy_::show_message(detail::make_log_message("Could not lock recursive_mutex", get_id(), t.elapsed()));
 			}
 			else
 				_m.lock();
@@ -64,11 +65,11 @@ namespace stalemate
 #else
 
 	template < typename LoggerPolicy_, int TimeoutMs_, typename MutexId_ = primitive_id::empty >
-	class basic_mutex : public std::mutex
+	class basic_recursive_mutex : public std::recursive_mutex
 	{
 	public:
 		template < typename... Args_ >
-		constexpr basic_mutex(Args_&&... args) { }
+		constexpr basic_recursive_mutex(Args_&&... args) { }
 	};
 
 #endif
