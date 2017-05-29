@@ -7,46 +7,60 @@ import subprocess
 import sys
 
 
-if len(sys.argv) != 2:
-    print('Usage: ./print_backtrace.py <debug symbols>')
-    exit(1)
+def normalize_hex(hex_str):
+    return hex_str if hex_str.startswith('0x') else '0x{}'.format(hex_str)
 
-file = sys.argv[1]
 
-tmp = os.popen("nm -n " + file).read()
+def hex_to_int(hex_str):
+    return int(normalize_hex(hex_str), 0)
 
-syms = []
-r = re.compile('^([0-9A-Fa-f]+).*\s(\S+)$')
-for s in tmp.split('\n'):
-    m = r.match(s)
-    if m:
-        addr = int('0x' + m.group(1), 0)
-        name = m.group(2)
-        syms.append({'addr': addr, 'name': name})
 
-demangler = subprocess.Popen("c++filt", stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+def main():
+    if len(sys.argv) != 2:
+        print('Usage: ./print_backtrace.py <debug symbols>')
+        exit(1)
 
-while True:
-    try:
-        backtrace = sys.stdin.readline()
-    except KeyboardInterrupt:
-        break
+    filename = sys.argv[1]
+    symbols_file = os.popen("nm -n " + filename).read()
 
-    if not backtrace:
-        break
+    syms = []
+    r = re.compile('^(?:0x)?([0-9A-Fa-f]+).*\s(\S+)$')
+    for s in symbols_file.split('\n'):
+        m = r.match(s)
+        if m:
+            addr = hex_to_int(m.group(1))
+            name = m.group(2)
+            syms.append({'addr': addr, 'name': name})
 
-    print '================================================================================'
+    demangler = subprocess.Popen("c++filt", stdin = subprocess.PIPE, stdout = subprocess.PIPE)
 
-    for bt_addr_str in backtrace.split():
-        bt_addr = int('0x' + bt_addr_str, 0)
+    print('Symbols file loaded successfully, you can paste the backtrace here.')
+    print('Press Ctrl-C to exit.')
+    while True:
+        try:
+            backtrace = sys.stdin.readline()
+        except KeyboardInterrupt:
+            break
 
-        for i in xrange(1, len(syms)):
-            if bt_addr >= syms[i - 1]['addr'] and bt_addr < syms[i]['addr']:
-                symbol = syms[i - 1]['name']
-                if demangler:
-                        demangler.stdin.write(symbol.replace("__ZN", "_ZN") + "\n")
-                        symbol = demangler.stdout.readline().strip()
-                print "{0} +{1}".format(symbol, bt_addr - syms[i - 1]['addr'])
-                break
+        if not backtrace:
+            break
 
-    print '================================================================================'
+        print '================================================================================'
+
+        for bt_addr_str in backtrace.split():
+            bt_addr = hex_to_int(bt_addr_str)
+
+            for i in xrange(1, len(syms)):
+                if bt_addr >= syms[i - 1]['addr'] and bt_addr < syms[i]['addr']:
+                    symbol = syms[i - 1]['name']
+                    if demangler:
+                            demangler.stdin.write(symbol.replace("__ZN", "_ZN") + "\n")
+                            symbol = demangler.stdout.readline().strip()
+                    print "{0} +{1}".format(symbol, bt_addr - syms[i - 1]['addr'])
+                    break
+
+        print '================================================================================'
+
+
+if __name__ == '__main__':
+    main()
